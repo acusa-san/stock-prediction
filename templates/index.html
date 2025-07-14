@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Stock Predictor</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        :root {
+            --primary: #4361ee;
+            --secondary: #3f37c9;
+            --accent: #4895ef;
+            --light: #f8f9fa;
+            --dark: #212529;
+            --success: #4cc9f0;
+            --warning: #f72585;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 40px;
+            background-color: #f0f2f5;
+            color: var(--dark);
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            padding: 40px;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+        }
+        
+        h1 {
+            color: var(--secondary);
+            text-align: center;
+            margin-bottom: 40px;
+            font-size: 2.5rem;
+            font-weight: 700;
+        }
+        
+        .form-container {
+            display: flex;
+            gap: 25px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        
+        .form-group {
+            flex: 1;
+            min-width: 250px;
+            max-width: 300px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 12px;
+            font-weight: 600;
+            color: var(--secondary);
+            font-size: 1.1rem;
+        }
+        
+        input, select, button {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 1rem;
+            box-sizing: border-box;
+            transition: all 0.3s ease;
+        }
+        
+        input:focus, select:focus {
+            border-color: var(--accent);
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.2);
+        }
+        
+        button {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            margin-top: 40px;
+            height: 51px;
+        }
+        
+        button:hover {
+            background-color: var(--secondary);
+            transform: translateY(-2px);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        button:disabled {
+            background-color: #adb5bd;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .error {
+            color: #d00000;
+            padding: 15px;
+            background-color: #ffeaee;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            display: none;
+            font-weight: 500;
+            border-left: 4px solid #d00000;
+        }
+        
+        #chart {
+            width: 100%;
+            height: 650px;
+            margin: 40px 0;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 30px;
+            display: none;
+            color: var(--primary);
+            font-size: 1.1rem;
+        }
+        
+        .loading i {
+            font-size: 28px;
+            margin-bottom: 15px;
+            display: block;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            100% { transform: rotate(360deg); }
+        }
+        
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+            align-items: center;
+        }
+        
+        .date-range {
+            display: flex;
+            gap: 10px;
+            background: #f8f9fa;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-weight: 500;
+            color: var(--dark);
+        }
+        
+        .small-btn {
+            padding: 10px 20px;
+            background: var(--light);
+            color: var(--primary);
+            border: 2px solid var(--primary);
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            width: auto;
+        }
+        
+        .small-btn:hover {
+            background: var(--primary);
+            color: white;
+        }
+        
+        .modebar {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1></i> Stock Price Predictor</h1>
+        
+        <div class="error" id="error-message"></div>
+        
+        <div class="form-container">
+            <div class="form-group">
+                <label for="ticker"><i class="fas fa-search" style="color: var(--accent);"></i> Stock Ticker</label>
+                <input type="text" id="ticker" placeholder="e.g., AAPL, MSFT, GOOG" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="days"><i class="fas fa-calendar-day" style="color: var(--accent);"></i> Prediction Days</label>
+                <select id="days">
+                    <option value="30">30 days</option>
+                    <option value="60">60 days</option>
+                    <option value="90">90 days</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="years"><i class="fas fa-history" style="color: var(--accent);"></i> Historical Data</label>
+                <select id="years">
+                    <option value="1">1 year</option>
+                    <option value="3" selected>3 years</option>
+                    <option value="5">5 years</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <button id="predict-btn"></i> Predict</button>
+            </div>
+        </div>
+        
+        <div class="loading" id="loading">
+            <i class="fas fa-spinner"></i>
+            <span>Generating prediction...</span>
+        </div>
+        
+        <div id="chart"></div>
+        
+        <div class="controls">
+            <div>
+                <button id="reset-zoom" class="small-btn"><i class="fas fa-expand"></i> Reset View</button>
+            </div>
+            <div class="date-range" id="date-range-display">
+                <span id="start-date"></span> to <span id="end-date"></span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const predictBtn = document.getElementById('predict-btn');
+            const tickerInput = document.getElementById('ticker');
+            const daysSelect = document.getElementById('days');
+            const yearsSelect = document.getElementById('years');
+            const chartDiv = document.getElementById('chart');
+            const errorDiv = document.getElementById('error-message');
+            const loadingDiv = document.getElementById('loading');
+            const resetZoomBtn = document.getElementById('reset-zoom');
+            const startDateSpan = document.getElementById('start-date');
+            const endDateSpan = document.getElementById('end-date');
+            
+            let currentChart = null;
+            
+            // Format date as YYYY-MM-DD
+            function formatDate(date) {
+                return date.toISOString().split('T')[0];
+            }
+            
+            // Get current date and calculate historical date
+            function getDates(years) {
+                const endDate = new Date();
+                const startDate = new Date();
+                startDate.setFullYear(startDate.getFullYear() - years);
+                return {
+                    start: formatDate(startDate),
+                    end: formatDate(endDate)
+                };
+            }
+            
+            // Update date range display
+            function updateDateDisplay(years) {
+                const dates = getDates(years);
+                startDateSpan.textContent = dates.start;
+                endDateSpan.textContent = dates.end;
+            }
+            
+            // Initialize date display
+            updateDateDisplay(parseInt(yearsSelect.value));
+            
+            // Handle prediction button click
+            predictBtn.addEventListener('click', async function() {
+                const ticker = tickerInput.value.trim().toUpperCase();
+                const predictionDays = parseInt(daysSelect.value);
+                const historicalYears = parseInt(yearsSelect.value);
+                
+                if (!ticker || !ticker.match(/^[A-Z]{1,5}$/)) {
+                    showError("Please enter a valid stock ticker (1-5 letters)");
+                    return;
+                }
+                
+                try {
+                    // Show loading state
+                    predictBtn.disabled = true;
+                    loadingDiv.style.display = 'block';
+                    errorDiv.style.display = 'none';
+                    
+                    // Get date range
+                    const dates = getDates(historicalYears);
+                    
+                    // In a real app, you would fetch data from your backend here
+                    // For this example, we'll simulate data
+                    const { historicalData, predictionData } = await simulatePrediction(ticker, dates.start, dates.end, predictionDays);
+                    
+                    // Update date display
+                    updateDateDisplay(historicalYears);
+                    
+                    // Create chart
+                    renderChart(ticker, historicalData, predictionData);
+                    
+                } catch (error) {
+                    showError(error.message);
+                } finally {
+                    predictBtn.disabled = false;
+                    loadingDiv.style.display = 'none';
+                }
+            });
+            
+            // Reset zoom button
+            resetZoomBtn.addEventListener('click', function() {
+                if (currentChart) {
+                    Plotly.relayout(chartDiv, {
+                        'xaxis.autorange': true,
+                        'yaxis.autorange': true
+                    });
+                }
+            });
+            
+            // Show error message
+            function showError(message) {
+                errorDiv.textContent = message;
+                errorDiv.style.display = 'block';
+                chartDiv.innerHTML = '';
+            }
+            
+            // Render the Plotly chart
+            function renderChart(ticker, historicalData, predictionData) {
+                const historicalDates = Object.keys(historicalData);
+                const historicalPrices = Object.values(historicalData);
+                
+                const lastDate = new Date(historicalDates[historicalDates.length - 1]);
+                const predictionDates = [];
+                
+                for (let i = 1; i <= predictionData.length; i++) {
+                    const newDate = new Date(lastDate);
+                    newDate.setDate(lastDate.getDate() + i);
+                    predictionDates.push(formatDate(newDate));
+                }
+                
+                const historicalTrace = {
+                    x: historicalDates,
+                    y: historicalPrices,
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: 'Historical Prices',
+                    line: {
+                        color: '#4361ee',
+                        width: 3,
+                        shape: 'spline',
+                        smoothing: 0.3
+                    },
+                    hoverinfo: 'x+y',
+                    hovertemplate: '<b>%{x|%b %d, %Y}</b><br>$%{y:.2f}<extra></extra>'
+                };
+                
+                const predictedTrace = {
+                    x: predictionDates,
+                    y: predictionData,
+                    type: 'scatter',
+                    mode: 'lines+markers',
+                    name: 'Predicted Prices',
+                    line: {
+                        color: '#f72585',
+                        width: 3,
+                        dash: 'dot',
+                        shape: 'spline',
+                        smoothing: 0.3
+                    },
+                    marker: {
+                        size: 7,
+                        color: '#f72585',
+                        symbol: 'circle-open'
+                    },
+                    hoverinfo: 'x+y',
+                    hovertemplate: '<b>%{x|%b %d, %Y}</b><br>$%{y:.2f}<extra></extra>'
+                };
+                
+                const layout = {
+                    title: {
+                        text: `<b>${ticker} Stock Price Prediction</b>`,
+                        font: {
+                            size: 24,
+                            color: '#212529'
+                        },
+                        x: 0.05,
+                        xanchor: 'left'
+                    },
+                    xaxis: {
+                        title: {
+                            text: '<b>Date</b>',
+                            font: {
+                                size: 14,
+                                color: '#495057'
+                            }
+                        },
+                        type: 'date',
+                        gridcolor: '#e9ecef',
+                        tickfont: {
+                            color: '#6c757d'
+                        },
+                        rangeslider: {
+                            visible: true,
+                            thickness: 0.05,
+                            bgcolor: '#f8f9fa'
+                        },
+                        rangeselector: {
+                            buttons: [
+                                {count: 1, label: '1M', step: 'month', stepmode: 'backward'},
+                                {count: 6, label: '6M', step: 'month', stepmode: 'backward'},
+                                {count: 1, label: 'YTD', step: 'year', stepmode: 'todate'},
+                                {count: 1, label: '1Y', step: 'year', stepmode: 'backward'},
+                                {step: 'all', label: 'All'}
+                            ],
+                            font: {
+                                color: '#495057'
+                            },
+                            bgcolor: '#e9ecef',
+                            activecolor: '#4361ee'
+                        }
+                    },
+                    yaxis: {
+                        title: {
+                            text: '<b>Price (USD)</b>',
+                            font: {
+                                size: 14,
+                                color: '#495057'
+                            }
+                        },
+                        gridcolor: '#e9ecef',
+                        tickfont: {
+                            color: '#6c757d'
+                        },
+                        tickprefix: '$'
+                    },
+                    hovermode: 'x unified',
+                    showlegend: true,
+                    legend: {
+                        orientation: 'h',
+                        y: -0.2,
+                        font: {
+                            size: 14
+                        }
+                    },
+                    margin: {
+                        t: 80,
+                        b: 100,
+                        l: 80,
+                        r: 40,
+                        pad: 10
+                    },
+                    plot_bgcolor: 'white',
+                    paper_bgcolor: 'white',
+                    font: {
+                        family: 'Segoe UI, Tahoma, Geneva, Verdana, sans-serif'
+                    }
+                };
+                
+                const config = {
+                    responsive: true,
+                    scrollZoom: true,
+                    displayModeBar: false, // This removes the Plotly toolbar completely
+                    doubleClick: 'reset'
+                };
+                
+                // Destroy previous chart if exists
+                if (currentChart) {
+                    Plotly.purge(chartDiv);
+                }
+                
+                currentChart = Plotly.newPlot(
+                    chartDiv,
+                    [historicalTrace, predictedTrace],
+                    layout,
+                    config
+                );
+            }
+            
+            // Simulate prediction - in a real app this would call your backend
+            async function simulatePrediction(ticker, startDate, endDate, predictionDays) {
+                return new Promise((resolve) => {
+                    // Simulate API delay
+                    setTimeout(() => {
+                        // Generate fake historical data
+                        const historicalData = {};
+                        const start = new Date(startDate);
+                        const end = new Date(endDate);
+                        
+                        let current = new Date(start);
+                        let price = 100 + Math.random() * 50; // Start between 100-150
+                        
+                        while (current <= end) {
+                            const dateStr = formatDate(current);
+                            historicalData[dateStr] = parseFloat(price.toFixed(2));
+                            
+                            // Random walk for next price
+                            price = price * (1 + (Math.random() - 0.5) * 0.02);
+                            current.setDate(current.getDate() + 1);
+                        }
+                        
+                        // Generate fake predictions
+                        const predictionData = [];
+                        let lastPrice = historicalData[formatDate(end)];
+                        
+                        for (let i = 0; i < predictionDays; i++) {
+                            // More conservative random walk for predictions
+                            lastPrice = lastPrice * (1 + (Math.random() - 0.48) * 0.015);
+                            predictionData.push(parseFloat(lastPrice.toFixed(2)));
+                        }
+                        
+                        resolve({ historicalData, predictionData });
+                    }, 1500); // Simulate 1.5 second delay
+                });
+            }
+        });
+    </script>
+</body>
+</html>
