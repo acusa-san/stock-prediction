@@ -45,12 +45,6 @@ Then open your browser at:
 
 ---
 
-## 📷 Screenshot
-
-![screenshot](static/screenshot.png)
-
----
-
 ## 📜 License
 
 This project is licensed under the MIT License.
